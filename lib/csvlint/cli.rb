@@ -11,15 +11,31 @@ module Csvlint
 
     desc "myfile.csv OR csvlint http://example.com/myfile.csv", "Supports validating CSV files to check their syntax and contents"
     option :dump_errors, desc: "Pretty print error and warning objects.", type: :boolean, aliases: :d
+    option :recursive, desc: "Go down subdirectories", type: :boolean, aliases: :r
+    option :delimiter, desc: "What delimiter to use", type: :string, aliases: :l
     option :schema, banner: "FILENAME OR URL", desc: "Schema file", aliases: :s
     option :json, desc: "Output errors as JSON", type: :boolean, aliases: :j
     def validate(source = nil)
+      if options[:recursive]
+        Dir.glob(File.join(source, '**/*.csv')).each do |f|
+          p "Processing: #{f}"
+          unless doit(f)
+            print("\n\nHit Enter for next file")
+            $stdin.gets
+          end
+        end
+      else
+        exit 1 unless doit(source)
+      end
+    end
+
+    def doit(source)
+      dialect = options.slice(:delimiter)
       source = read_source(source)
       @schema = get_schema(options[:schema]) if options[:schema]
       fetch_schema_tables(@schema, options) if source.nil?
 
-      valid = validate_csv(source, @schema, options[:dump], options[:json])
-      exit 1 unless valid
+      validate_csv(source, dialect, @schema, options[:dump_errors], options[:json])
     end
 
     def help
@@ -129,13 +145,13 @@ module Csvlint
         exit 1
       end
 
-      def validate_csv(source, schema, dump, json)
+      def validate_csv(source, dialect = {}, schema, dump, json)
         @error_count = 0
 
         if json === true
-          validator = Csvlint::Validator.new( source, {}, schema )
+          validator = Csvlint::Validator.new( source, dialect, schema )
         else
-          validator = Csvlint::Validator.new( source, {}, schema, { lambda: report_lines } )
+          validator = Csvlint::Validator.new( source, dialect, schema, { lambda: report_lines } )
         end
 
         if source.class == String

@@ -136,6 +136,8 @@ module Csvlint
     end
 
     def parse_line(line)
+      line.delete!("\u001A")
+      return if line.blank?
       line = @leading + line
       # Check if the last line is a line break - in which case it's a full line
       if line[-1, 1].include?("\n")
