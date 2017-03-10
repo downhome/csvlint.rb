@@ -12,12 +12,15 @@ module Csvlint
     desc "myfile.csv OR csvlint http://example.com/myfile.csv", "Supports validating CSV files to check their syntax and contents"
     option :dump_errors, desc: "Pretty print error and warning objects.", type: :boolean, aliases: :d
     option :recursive, desc: "Go down subdirectories", type: :boolean, aliases: :r
+    option :manifest, desc: "Limit files to the list in this manifest file", alias: :m
     option :delimiter, desc: "What delimiter to use", type: :string, aliases: :l
     option :schema, banner: "FILENAME OR URL", desc: "Schema file", aliases: :s
     option :json, desc: "Output errors as JSON", type: :boolean, aliases: :j
     def validate(source = nil)
       if options[:recursive]
         Dir.glob(File.join(source, '**/*.csv')).each do |f|
+          next unless options[:manifest] && f =~ manifest_regex
+
           p "Processing: #{f}"
           unless doit(f)
             print("\n\nHit Enter for next file")
@@ -45,6 +48,10 @@ module Csvlint
     default_task :validate
 
     private
+
+      def manifest_regex
+        @manifest_regex ||= Regexp.new(File.read(option[:manifest]).split("\n").join('|'), 'i')
+      end
 
       def read_source(source)
         if source.nil?
