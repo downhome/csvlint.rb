@@ -19,7 +19,7 @@ module Csvlint
     def validate(source = nil)
       if options[:recursive]
         Dir.glob(File.join(source, '**/*.csv')).each do |f|
-          next unless options[:manifest] && f =~ manifest_regex
+          next unless options[:manifest] && File.basename(f) =~ manifest_regex
 
           p "Processing: #{f}"
           unless doit(f)
@@ -50,7 +50,7 @@ module Csvlint
     private
 
       def manifest_regex
-        @manifest_regex ||= Regexp.new(File.read(options[:manifest]).split("\n").join('|'), 'i')
+        @manifest_regex ||= %r(^(#{File.read(options[:manifest]).split("\n").join('|')})$)i
       end
 
       def read_source(source)
