@@ -9,7 +9,7 @@ require 'active_support/inflector'
 module Csvlint
   class Cli < Thor
 
-    desc "myfile.csv OR csvlint http://example.com/myfile.csv", "Supports validating CSV files to check their syntax and contents"
+    desc "xmyfile.csv OR csvlint http://example.com/myfile.csv", "Supports validating CSV files to check their syntax and contents"
     option :dump_errors, desc: "Pretty print error and warning objects.", type: :boolean, aliases: :d
     option :recursive, desc: "Go down subdirectories", type: :boolean, aliases: :r
     option :manifest, desc: "Limit files to the list in this manifest file", aliases: :m
@@ -19,7 +19,7 @@ module Csvlint
     def validate(source = nil)
       if options[:recursive]
         Dir.glob(File.join(source, '**/*.csv')).each do |f|
-          next unless options[:manifest] && File.basename(f) =~ manifest_regex
+          next if options[:manifest] && File.basename(f) !~ manifest_regex
 
           p "Processing: #{f}"
           unless doit(f)
@@ -32,15 +32,6 @@ module Csvlint
       end
     end
 
-    def doit(source)
-      dialect = options.slice(:delimiter)
-      source = read_source(source)
-      @schema = get_schema(options[:schema]) if options[:schema]
-      fetch_schema_tables(@schema, options) if source.nil?
-
-      validate_csv(source, dialect, @schema, options[:dump_errors], options[:json])
-    end
-
     def help
       self.class.command_help(shell, :validate)
     end
@@ -48,6 +39,15 @@ module Csvlint
     default_task :validate
 
     private
+
+      def doit(source)
+        dialect = options.slice(:delimiter)
+        source = read_source(source)
+        @schema = get_schema(options[:schema]) if options[:schema]
+        fetch_schema_tables(@schema, options) if source.nil?
+
+        validate_csv(source, dialect, @schema, options[:dump_errors], options[:json])
+      end
 
       def manifest_regex
         @manifest_regex ||= %r(^(#{File.read(options[:manifest]).split("\n").join('|')})$)i
